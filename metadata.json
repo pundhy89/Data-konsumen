@@ -1,0 +1,6 @@
+{
+  "name": "SI-KPR Prima - Sistem Pemberkasan KPR Bersubsidi & Masterplan Real-Time",
+  "description": "Platform manajemen kelengkapan berkas, monitoring pengajuan KPR bersubsidi, notifikasi berkas real-time, masterplan kawasan 70 unit interaktif, dan analitik penjualan developer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
