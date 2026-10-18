@@ -19,11 +19,12 @@ interface UnitPopupModalProps {
   unit: Unit | null;
   onClose: () => void;
   application: KprApplication | null;
-  onOpenDocuments: (unit: Unit, app: KprApplication) => void;
+  onOpenDocuments?: (unit: Unit, app: KprApplication) => void;
   onOpenTracker: (unit: Unit, app: KprApplication) => void;
   onOpenNewBooking: (unit: Unit) => void;
   onUpdateUnitStatus: (unitId: string, newStatus: UnitStatus, newProgress?: number) => void;
   onOpenWhatsAppReminder?: (unit: Unit, app: KprApplication) => void;
+  onOpenCustomerDetail?: (unit: Unit, app: KprApplication) => void;
   housingName?: string;
   companyName?: string;
 }
@@ -37,6 +38,7 @@ export default function UnitPopupModal({
   onOpenNewBooking,
   onUpdateUnitStatus,
   onOpenWhatsAppReminder,
+  onOpenCustomerDetail,
   housingName,
   companyName,
 }: UnitPopupModalProps) {
@@ -201,13 +203,25 @@ export default function UnitPopupModal({
 
                 {application ? (
                   <div className="space-y-2 text-xs">
-                    <div>
-                      <div className="font-bold text-slate-900 text-sm">
-                        {application.customer.nama}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-slate-900 text-sm">
+                          {application.customer.nama}
+                        </div>
+                        <div className="text-slate-500 text-[11px]">
+                          NIK: {application.customer.nik} · {application.customer.pekerjaan}
+                        </div>
                       </div>
-                      <div className="text-slate-500 text-[11px]">
-                        NIK: {application.customer.nik} · {application.customer.pekerjaan}
-                      </div>
+                      {onOpenCustomerDetail && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenCustomerDetail(unit, application)}
+                          className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold shrink-0 transition-colors"
+                          title="Buka profil lengkap konsumen, denah kavling & progres pembangunan"
+                        >
+                          Lihat Profil
+                        </button>
+                      )}
                     </div>
 
                     <div className="p-2 rounded-lg bg-white border border-slate-200 space-y-1">
@@ -282,25 +296,31 @@ export default function UnitPopupModal({
           {/* Action Buttons */}
           {application && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-              <button
-                onClick={() => onOpenDocuments(unit, application)}
-                className="p-3 rounded-xl bg-blue-50/80 hover:bg-blue-50 border border-blue-200 text-slate-900 flex items-center justify-between group transition-colors shadow-2xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-blue-600 text-white">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-bold text-xs text-blue-900">
-                      Kelengkapan Berkas & Audit Legal
+              {onOpenCustomerDetail && (
+                <button
+                  type="button"
+                  onClick={() => onOpenCustomerDetail(unit, application)}
+                  className="sm:col-span-2 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-sky-50 hover:from-blue-100 hover:to-sky-100 border border-blue-200 text-slate-900 flex items-center justify-between group transition-colors shadow-2xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-blue-600 text-white shadow-2xs">
+                      <Home className="w-4 h-4" />
                     </div>
-                    <div className="text-[10px] text-slate-500">
-                      Upload e-KTP, KK, Slip Gaji, SPT PPh 21
+                    <div className="text-left">
+                      <div className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
+                        <span>Lihat Profil Konsumen, Denah & Progres Unit</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-sky-200 text-sky-800">
+                          {unit.constructionProgress}%
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        Data ringkas {application.customer.nama}, gambar denah 2D & progres fisik
+                      </div>
                     </div>
                   </div>
-                </div>
-                <ExternalLink className="w-3.5 h-3.5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
-              </button>
+                  <ExternalLink className="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
 
               <button
                 onClick={() => onOpenTracker(unit, application)}

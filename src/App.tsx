@@ -21,12 +21,12 @@ import {
 } from './data/initialData';
 import SitePlanMasterplan from './components/SitePlanMasterplan';
 import UnitPopupModal from './components/UnitPopupModal';
-import DocumentVerificationModal from './components/DocumentVerificationModal';
 import KprApplicationTracker from './components/KprApplicationTracker';
 import NotificationCenter from './components/NotificationCenter';
 import NewBookingModal from './components/NewBookingModal';
 import SettingsView from './components/SettingsView';
 import WhatsAppReminderView from './components/WhatsAppReminderView';
+import CustomerDetailModal from './components/CustomerDetailModal';
 import { 
   Building2, 
   Layers, 
@@ -42,7 +42,10 @@ import {
   Send,
   ChevronRight,
   Check,
-  X
+  X,
+  User,
+  Home,
+  Compass
 } from 'lucide-react';
 
 export default function App() {
@@ -95,6 +98,17 @@ export default function App() {
 
   // App navigation & filters (Tabs: masterplan, pemberkasan, whatsapp, settings)
   const [activeTab, setActiveTab] = useState<'masterplan' | 'pemberkasan' | 'whatsapp' | 'settings'>('masterplan');
+  
+  // Listen to Escape key to return to fullscreen masterplan
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeTab !== 'masterplan') {
+        setActiveTab('masterplan');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab]);
   const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN_LEGAL');
   const [statusFilter, setStatusFilter] = useState<UnitStatus | 'ALL'>('ALL');
   const [blockFilter, setBlockFilter] = useState<BlockId | 'ALL'>('ALL');
@@ -102,9 +116,9 @@ export default function App() {
 
   // Modals state
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
-  const [docModalApp, setDocModalApp] = useState<{ unit: Unit; app: KprApplication } | null>(null);
   const [trackerModalApp, setTrackerModalApp] = useState<{ unit: Unit; app: KprApplication } | null>(null);
   const [bookingUnit, setBookingUnit] = useState<Unit | null>(null);
+  const [customerDetailModal, setCustomerDetailModal] = useState<{ unit: Unit; app: KprApplication } | null>(null);
 
   // Active floating toast
   const [activeToast, setActiveToast] = useState<NotificationItem | null>(null);
@@ -334,22 +348,6 @@ export default function App() {
       })
     );
 
-    if (docModalApp?.app.id === appId) {
-      setDocModalApp((prev) =>
-        prev
-          ? {
-              ...prev,
-              app: {
-                ...prev.app,
-                documents: prev.app.documents.map((d) =>
-                  d.id === docId ? { ...d, status, notes: notes || d.notes } : d
-                ),
-              },
-            }
-          : null
-      );
-    }
-
     if (status === 'TERVERIFIKASI') {
       pushNotification(
         'Dokumen Berhasil Diverifikasi',
@@ -400,29 +398,6 @@ export default function App() {
         return app;
       })
     );
-
-    if (docModalApp?.app.id === appId) {
-      setDocModalApp((prev) =>
-        prev
-          ? {
-              ...prev,
-              app: {
-                ...prev.app,
-                documents: prev.app.documents.map((d) =>
-                  d.id === docId
-                    ? {
-                        ...d,
-                        fileName,
-                        status: 'MENUNGGU_VERIFIKASI',
-                        uploadedAt: 'Hari ini',
-                      }
-                    : d
-                ),
-              },
-            }
-          : null
-      );
-    }
 
     pushNotification(
       'Dokumen Baru Diunggah',
@@ -624,258 +599,99 @@ export default function App() {
   const akadCount = units.filter((u) => u.status === 'REALISASI_AKAD').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-emerald-600 selection:text-white">
-      {/* Top Header - Modern Light, Simple, Space-Efficient */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-4 py-2 flex items-center justify-between gap-3 shadow-2xs">
-        {/* Brand & Dynamic Title/Housing - MENU/TAB DI LOGO APLIKASI */}
-        <div className="relative shrink-0" ref={logoMenuRef}>
-          <button
-            onClick={() => setIsLogoMenuOpen((prev) => !prev)}
-            className="group relative p-[1.5px] rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.99] text-left"
-            title="Klik logo aplikasi untuk membuka menu"
-            aria-label="Menu navigasi logo aplikasi"
-          >
-            <div className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-[14px] bg-white group-hover:bg-slate-50 transition-colors">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                <Building2 className="w-4 h-4" />
+    <div className="w-screen h-screen overflow-hidden bg-slate-950 text-slate-900 flex flex-col font-sans selection:bg-emerald-600 selection:text-white relative">
+      {/* 1. PRIMARY FULLSCREEN INTERACTIVE SITEPLAN MAP */}
+      <SitePlanMasterplan
+        units={units}
+        applications={applications}
+        selectedUnit={selectedUnit}
+        onSelectUnit={handleSelectUnit}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        blockFilter={blockFilter}
+        setBlockFilter={setBlockFilter}
+        onAddUnit={handleAddUnit}
+        onUpdateUnit={handleUpdateUnit}
+        onDeleteUnit={handleDeleteUnit}
+        onOpenCustomerDoc={(u, a) => setCustomerDetailModal({ unit: u, app: a })}
+        housingName={settings.housingName}
+        housingAddress={settings.housingAddress}
+        appTitle={settings.appTitle}
+        onOpenTab={(tab) => setActiveTab(tab)}
+        currentRole={currentRole}
+        onRoleChange={setCurrentRole}
+        notifications={notifications}
+        onTriggerSimulatedEvent={handleTriggerSimulatedEvent}
+        onMarkNotificationAsRead={(id) =>
+          setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+        }
+        onMarkAllNotificationsAsRead={() =>
+          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+        }
+        onSelectUnitById={handleSelectUnitById}
+        activeToast={activeToast}
+        onDismissToast={() => setActiveToast(null)}
+        onClearHistory={() => setNotifications([])}
+      />
+
+      {/* 2. OVERLAY MODAL DRAWER FOR DATA KONSUMEN, WHATSAPP, AND SETTINGS */}
+      {activeTab !== 'masterplan' && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md p-2 sm:p-4 md:p-6 overflow-hidden flex flex-col items-center justify-center animate-in fade-in">
+          <div className="w-full max-w-7xl h-full flex flex-col bg-slate-50 rounded-2xl shadow-2xl overflow-hidden border border-slate-700/60">
+            {/* Modal Header */}
+            <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setActiveTab('masterplan')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs"
+                  title="Kembali ke Peta Kawasan Fullscreen"
+                >
+                  <Compass className="w-4 h-4 text-emerald-400" />
+                  <span>← Kembali ke Peta Fullscreen</span>
+                </button>
+
+                <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  {activeTab === 'pemberkasan' && (
+                    <>
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span>Data Konsumen & Berkas KPR</span>
+                      <span className="text-xs font-normal text-slate-500">
+                        ({applications.length} Pemohon)
+                      </span>
+                    </>
+                  )}
+                  {activeTab === 'whatsapp' && (
+                    <>
+                      <MessageSquare className="w-4 h-4 text-emerald-600" />
+                      <span>Pengingat WhatsApp Otomatis</span>
+                      <span className="text-xs font-normal text-slate-500">
+                        ({reminders.length} Pesan Terjadwal)
+                      </span>
+                    </>
+                  )}
+                  {activeTab === 'settings' && (
+                    <>
+                      <Settings className="w-4 h-4 text-slate-700" />
+                      <span>Pengaturan Sistem KPR</span>
+                    </>
+                  )}
+                </h2>
               </div>
 
-              <span className="text-sm font-extrabold text-slate-900 tracking-tight group-hover:text-blue-700 transition-colors">
-                {settings.appTitle || 'SI-KPR PRIMA'}
-              </span>
+              <button
+                onClick={() => setActiveTab('masterplan')}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+                title="Tutup (ESC)"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          </button>
 
-          {/* POPOVER / DROPDOWN MENU DI DALAM LOGO APLIKASI */}
-          {isLogoMenuOpen && (
-            <div className="absolute top-full left-0 mt-2 z-50 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200/90 backdrop-blur-xl p-3.5 animate-in fade-in zoom-in-95 duration-150">
-              {/* Header Menu Logo */}
-              <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs">
-                    <Building2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900 leading-tight">
-                      {settings.appTitle || 'SI-KPR PRIMA'}
-                    </h3>
-                    <p className="text-[11px] text-slate-500">
-                      {settings.housingName || 'KPR Subsidi 70 Unit'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsLogoMenuOpen(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
-                  title="Tutup Menu Logo"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Status Tab Saat Ini */}
-              <div className="mt-2.5 mb-2 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between text-xs">
-                <span className="text-slate-500 text-[11px]">Halaman Tab Aktif:</span>
-                <span className="font-bold text-emerald-700 capitalize flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  {activeTab === 'masterplan' && 'Denah Kawasan'}
-                  {activeTab === 'pemberkasan' && 'Data Konsumen'}
-                  {activeTab === 'whatsapp' && 'Pengingat WhatsApp'}
-                  {activeTab === 'settings' && 'Pengaturan Sistem'}
-                </span>
-              </div>
-
-              {/* DAFTAR MENU TAB DI DALAM LOGO */}
-              <div className="space-y-1.5 my-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
-                  Pilih Menu / Tab Navigasi
-                </p>
-
-                {/* 1. Denah Kawasan */}
-                <button
-                  onClick={() => {
-                    setActiveTab('masterplan');
-                    setIsLogoMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-xl transition-all text-left ${
-                    activeTab === 'masterplan'
-                      ? 'bg-emerald-50 text-emerald-950 border border-emerald-300 font-bold shadow-2xs'
-                      : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-2xs">
-                      <Layers className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold leading-tight">Denah Kawasan</div>
-                      <div className="text-[10px] text-slate-500">Siteplan interaktif 70 unit KPR</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    {availableCount} Tersedia
-                  </span>
-                </button>
-
-                {/* 2. Data Konsumen */}
-                <button
-                  onClick={() => {
-                    setActiveTab('pemberkasan');
-                    setIsLogoMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-xl transition-all text-left ${
-                    activeTab === 'pemberkasan'
-                      ? 'bg-blue-50 text-blue-950 border border-blue-300 font-bold shadow-2xs'
-                      : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-2xs">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold leading-tight">Data Konsumen</div>
-                      <div className="text-[10px] text-slate-500">Kelola berkas dokumen & verifikasi pemohon</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                    {applications.length} Konsumen
-                  </span>
-                </button>
-
-                {/* 3. Pengingat WhatsApp */}
-                <button
-                  onClick={() => {
-                    setActiveTab('whatsapp');
-                    setIsLogoMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-xl transition-all text-left ${
-                    activeTab === 'whatsapp'
-                      ? 'bg-emerald-50 text-emerald-950 border border-emerald-300 font-bold shadow-2xs'
-                      : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shadow-2xs">
-                      <MessageSquare className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold leading-tight">Pengingat WhatsApp</div>
-                      <div className="text-[10px] text-slate-500">Kirim pesan WA & jadwal otomatis</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    {reminders.length} Pesan
-                  </span>
-                </button>
-
-                {/* 4. Pengaturan Sistem */}
-                <button
-                  onClick={() => {
-                    setActiveTab('settings');
-                    setIsLogoMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2 rounded-xl transition-all text-left ${
-                    activeTab === 'settings'
-                      ? 'bg-slate-100 text-slate-950 border border-slate-300 font-bold shadow-2xs'
-                      : 'hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-2xs">
-                      <Settings className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold leading-tight">Pengaturan Sistem</div>
-                      <div className="text-[10px] text-slate-500">Judul, Developer, Harga, Bank & Marketing</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-800">
-                    Kelola
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Tools: Role Switcher, Quick Simulation, History */}
-        <div className="flex items-center gap-2">
-          {/* Role Switcher */}
-          <div className="hidden lg:flex items-center bg-slate-100 border border-slate-200 p-0.5 rounded-lg text-xs">
-            <span className="text-[10px] text-slate-500 px-1.5 font-medium">Peran:</span>
-            <button
-              onClick={() => setCurrentRole('ADMIN_LEGAL')}
-              className={`px-2 py-0.5 rounded-md font-bold transition-all text-[11px] ${
-                currentRole === 'ADMIN_LEGAL'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              ⚖️ Tim Legal
-            </button>
-            <button
-              onClick={() => setCurrentRole('MARKETING')}
-              className={`px-2 py-0.5 rounded-md font-bold transition-all text-[11px] ${
-                currentRole === 'MARKETING'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              💼 Marketing
-            </button>
-          </div>
-
-          {/* Quick Simulation Trigger */}
-          <button
-            onClick={() => handleTriggerSimulatedEvent()}
-            className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold hidden sm:flex items-center gap-1 transition-colors"
-            title="Simulasikan pembaruan dokumen real-time"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Simulasi</span>
-          </button>
-
-          {/* History Center (Riwayat Aktivitas Real-Time Multi-Akun) */}
-          <NotificationCenter
-            notifications={notifications}
-            onMarkAsRead={(id) =>
-              setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-            }
-            onMarkAllAsRead={() =>
-              setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-            }
-            onSelectUnitById={handleSelectUnitById}
-            onTriggerSimulatedEvent={handleTriggerSimulatedEvent}
-            activeToast={activeToast}
-            onDismissToast={() => setActiveToast(null)}
-            onClearHistory={() => setNotifications([])}
-          />
-        </div>
-      </header>
-
-      {/* Main Content Area - Full-Width Zero Waste Space */}
-      <main className={`flex-1 w-full ${activeTab === 'masterplan' ? 'p-0 m-0' : 'px-2 py-2 sm:px-3 sm:py-2.5 space-y-2'}`}>
-        {/* TAB 1: DENAH KAWASAN MASTERPLAN */}
-        {activeTab === 'masterplan' && (
-          <div className="w-full animate-in fade-in">
-            {/* Masterplan Visual Canvas */}
-            <SitePlanMasterplan
-              units={units}
-              selectedUnit={selectedUnit}
-              onSelectUnit={handleSelectUnit}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              blockFilter={blockFilter}
-              setBlockFilter={setBlockFilter}
-              onAddUnit={handleAddUnit}
-              onUpdateUnit={handleUpdateUnit}
-              onDeleteUnit={handleDeleteUnit}
-            />
-          </div>
-        )}
-
-        {/* TAB 2: DATA KONSUMEN & PENGAJUAN KPR */}
+            {/* Modal Body with internal scrolling */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+              {/* TAB 2: DATA KONSUMEN & PENGAJUAN KPR */}
         {activeTab === 'pemberkasan' && (
           <div className="space-y-3 animate-in fade-in">
             <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white border border-slate-200 rounded-xl shadow-2xs">
@@ -885,7 +701,7 @@ export default function App() {
                   Data Konsumen
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Data pemohon, audit kelengkapan 13 dokumen legal FLPP & pemantauan status persetujuan bank
+                  Data pemohon, kelengkapan 13 dokumen legal FLPP & pemantauan status persetujuan bank
                 </p>
               </div>
 
@@ -922,12 +738,24 @@ export default function App() {
                         </span>
                       </div>
 
-                      <h3 className="font-bold text-sm text-slate-900">
-                        {app.customer.nama}
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        {app.customer.pekerjaan} · <strong className="text-emerald-700">{app.bankPenyalur}</strong>
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (unit) setCustomerDetailModal({ unit, app });
+                        }}
+                        className="text-left group/cust hover:text-blue-700 transition-colors w-full"
+                        title="Klik untuk membuka profil konsumen, denah kavling & progres pembangunan"
+                      >
+                        <h3 className="font-bold text-sm text-slate-900 group-hover/cust:text-blue-700 group-hover/cust:underline flex items-center justify-between">
+                          <span>{app.customer.nama}</span>
+                          <span className="text-[10px] text-blue-600 font-semibold opacity-0 group-hover/cust:opacity-100 transition-opacity">
+                            Detail & Denah →
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                          {app.customer.pekerjaan} · <strong className="text-emerald-700">{app.bankPenyalur}</strong>
+                        </p>
+                      </button>
 
                       {/* Current Stage Badge */}
                       <div className="mt-2.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
@@ -960,28 +788,30 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Action Buttons: Audit, Alur, and Kirim WA */}
+                    {/* Action Buttons: Profil & Denah, Audit, and Alur */}
                     <div className="space-y-2 pt-2 border-t border-slate-100">
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => {
-                            if (unit) setDocModalApp({ unit, app });
-                          }}
-                          className="py-1.5 px-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Audit Berkas</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (unit) setTrackerModalApp({ unit, app });
-                          }}
-                          className="py-1.5 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
-                        >
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>Alur KPR</span>
-                        </button>
-                      </div>
+                      {/* Tombol Lihat Kavling & Progres */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (unit) setCustomerDetailModal({ unit, app });
+                        }}
+                        className="w-full py-1.5 px-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                        title="Lihat denah tata ruang dan progres pembangunan unit ini"
+                      >
+                        <Home className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Lihat Kavling, Denah & Progres</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (unit) setTrackerModalApp({ unit, app });
+                        }}
+                        className="w-full py-1.5 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Lacak Alur KPR</span>
+                      </button>
 
                       <button
                         onClick={() => {
@@ -1026,9 +856,12 @@ export default function App() {
               onApplyPriceToAllUnits={handleApplyPriceToAllUnits}
               onLogHistory={handleLogHistory}
             />
+              </div>
+            )}
+            </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       {/* MODAL 1: UNIT VISUAL POPUP */}
       {selectedUnit && (
@@ -1036,10 +869,6 @@ export default function App() {
           unit={selectedUnit}
           onClose={() => setSelectedUnit(null)}
           application={getAppForUnit(selectedUnit)}
-          onOpenDocuments={(u, a) => {
-            setSelectedUnit(null);
-            setDocModalApp({ unit: u, app: a });
-          }}
           onOpenTracker={(u, a) => {
             setSelectedUnit(null);
             setTrackerModalApp({ unit: u, app: a });
@@ -1053,24 +882,16 @@ export default function App() {
             setSelectedUnit(null);
             setActiveTab('whatsapp');
           }}
+          onOpenCustomerDetail={(u, a) => {
+            setSelectedUnit(null);
+            setCustomerDetailModal({ unit: u, app: a });
+          }}
           housingName={settings.housingName}
           companyName={settings.companyName}
         />
       )}
 
-      {/* MODAL 2: DOCUMENT VERIFICATION MODAL */}
-      {docModalApp && (
-        <DocumentVerificationModal
-          unit={docModalApp.unit}
-          application={docModalApp.app}
-          role={currentRole}
-          onClose={() => setDocModalApp(null)}
-          onUpdateDocumentStatus={handleUpdateDocumentStatus}
-          onUploadDocument={handleUploadDocument}
-        />
-      )}
-
-      {/* MODAL 3: KPR REAL-TIME STAGE TRACKER MODAL */}
+      {/* MODAL 2: KPR REAL-TIME STAGE TRACKER MODAL */}
       {trackerModalApp && (
         <KprApplicationTracker
           unit={trackerModalApp.unit}
@@ -1080,7 +901,7 @@ export default function App() {
         />
       )}
 
-      {/* MODAL 4: NEW BOOKING INTAKE MODAL */}
+      {/* MODAL 3: NEW BOOKING INTAKE MODAL */}
       {bookingUnit && (
         <NewBookingModal
           unit={bookingUnit}
@@ -1088,6 +909,23 @@ export default function App() {
           onConfirmBooking={handleConfirmBooking}
           marketings={settings.marketings}
           banks={settings.banks}
+        />
+      )}
+
+      {/* MODAL 4: CUSTOMER PROFILE, KAVLING DENAH & CONSTRUCTION PROGRESS */}
+      {customerDetailModal && (
+        <CustomerDetailModal
+          unit={customerDetailModal.unit}
+          application={customerDetailModal.app}
+          onClose={() => setCustomerDetailModal(null)}
+          onOpenTracker={(u, a) => {
+            setCustomerDetailModal(null);
+            setTrackerModalApp({ unit: u, app: a });
+          }}
+          onOpenUnitModal={(u) => {
+            setCustomerDetailModal(null);
+            setSelectedUnit(u);
+          }}
         />
       )}
     </div>

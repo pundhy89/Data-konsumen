@@ -756,6 +756,7 @@ export const INITIAL_SETTINGS: AppSettings = {
   appTitle: 'SI-KPR PRIMA',
   housingName: 'Griya Prima Asri Cikarang',
   companyName: 'PT. Prima Karya Mandiri Developer',
+  housingAddress: 'Jl. Raya Cikarang - Cibarusah, Cikarang Selatan, Bekasi, Jawa Barat',
   defaultUnitPrice: 185000000,
   marketings: [
     {

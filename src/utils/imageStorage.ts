@@ -86,3 +86,69 @@ export async function clearSiteplanImageFromDB(): Promise<void> {
     console.warn('Failed to clear image from IndexedDB:', error);
   }
 }
+
+const HOUSEPLAN_KEY = 'custom_houseplan_type36_66_image';
+
+export async function saveHouseplanImageToDB(file: File | Blob): Promise<void> {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(file, HOUSEPLAN_KEY);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.warn('Failed to save houseplan image to IndexedDB:', error);
+  }
+}
+
+export async function loadHouseplanImageFromDB(): Promise<string | null> {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(HOUSEPLAN_KEY);
+
+      request.onsuccess = () => {
+        const result = request.result;
+        if (result instanceof Blob) {
+          const url = URL.createObjectURL(result);
+          resolve(url);
+        } else if (typeof result === 'string') {
+          resolve(result);
+        } else {
+          resolve(null);
+        }
+      };
+
+      request.onerror = () => {
+        console.warn('Failed to get houseplan image from IndexedDB:', request.error);
+        resolve(null);
+      };
+    });
+  } catch (error) {
+    console.warn('IndexedDB not accessible:', error);
+    return null;
+  }
+}
+
+export async function clearHouseplanImageFromDB(): Promise<void> {
+  try {
+    const db = await openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(HOUSEPLAN_KEY);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.warn('Failed to clear houseplan image from IndexedDB:', error);
+  }
+}
+

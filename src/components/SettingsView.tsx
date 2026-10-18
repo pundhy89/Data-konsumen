@@ -46,6 +46,7 @@ export default function SettingsView({
   // Local state for basic fields
   const [appTitle, setAppTitle] = useState(settings.appTitle);
   const [housingName, setHousingName] = useState(settings.housingName);
+  const [housingAddress, setHousingAddress] = useState(settings.housingAddress || 'Jl. Raya Cikarang - Cibarusah, Cikarang Selatan, Bekasi, Jawa Barat');
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [defaultUnitPrice, setDefaultUnitPrice] = useState(settings.defaultUnitPrice);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -83,13 +84,14 @@ export default function SettingsView({
       ...settings,
       appTitle: appTitle.trim() || 'SI-KPR PRIMA',
       housingName: housingName.trim() || 'Griya Prima Asri',
+      housingAddress: housingAddress.trim() || 'Jl. Raya Cikarang - Cibarusah, Cikarang Selatan, Bekasi, Jawa Barat',
       companyName: companyName.trim() || 'PT. Prima Karya Mandiri',
       defaultUnitPrice: Number(defaultUnitPrice) || 185000000,
     };
     onUpdateSettings(updated);
     onLogHistory(
       'Pengaturan Umum Diperbarui',
-      `Judul: "${updated.appTitle}", Perumahan: "${updated.housingName}", Pengembang: "${updated.companyName}"`
+      `Judul: "${updated.appTitle}", Perumahan: "${updated.housingName}", Alamat: "${updated.housingAddress}"`
     );
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
@@ -362,6 +364,23 @@ export default function SettingsView({
                 />
                 <p className="text-[11px] text-slate-400">
                   Kawasan perumahan yang tertera pada denah dan surat pemesanan rumah.
+                </p>
+              </div>
+
+              {/* Alamat & Lokasi Map Perumahan */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  Alamat Lengkap Kawasan (Tampil di Peta Lokasi)
+                </label>
+                <input
+                  type="text"
+                  value={housingAddress}
+                  onChange={(e) => setHousingAddress(e.target.value)}
+                  placeholder="Contoh: Jl. Raya Cikarang - Cibarusah, Cikarang Selatan, Bekasi"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Alamat ini digunakan untuk navigasi GPS dan pencarian rute pada Google Maps.
                 </p>
               </div>
 

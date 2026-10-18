@@ -169,6 +169,7 @@ export interface AppSettings {
   appTitle: string;
   housingName: string;
   companyName: string;
+  housingAddress?: string;
   defaultUnitPrice: number;
   marketings: MarketingStaff[];
   banks: PartnerBank[];
